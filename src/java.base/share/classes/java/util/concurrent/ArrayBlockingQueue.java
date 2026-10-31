@@ -193,7 +193,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
      */
     private E dequeue() {
         // assert lock.isHeldByCurrentThread();
-        // assert lock.getHoldCount() == 1;
+        // assert lock.getHoldCount() == 1; // The lock is held once, not reentrantly.
         // assert items[takeIndex] != null;
         final Object[] items = this.items;
         @SuppressWarnings("unchecked")
@@ -229,6 +229,8 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
             // an "interior" remove
 
             // slide over all others up through putIndex.
+            // Advance i after pred. Shift items[i] into pred until i reaches
+            // putIndex, then clear the final slot and move putIndex backward.
             for (int i = removeIndex, putIndex = this.putIndex;;) {
                 int pred = i;
                 if (++i == items.length) i = 0;
@@ -393,6 +395,8 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
             while (count == items.length) {
                 if (nanos <= 0L)
                     return false;
+                // Release the lock while waiting. After a signal, timeout, or
+                // spurious wakeup, recheck both the queue and time remaining.
                 nanos = notFull.awaitNanos(nanos);
             }
             enqueue(e);
@@ -514,6 +518,8 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         try {
             if (count > 0) {
                 final Object[] items = this.items;
+                // Search one range when the occupied region is contiguous;
+                // if it wraps, search [takeIndex, length) and [0, putIndex).
                 for (int i = takeIndex, end = putIndex,
                          to = (i < end) ? end : items.length;
                      ; i = 0, to = end) {
