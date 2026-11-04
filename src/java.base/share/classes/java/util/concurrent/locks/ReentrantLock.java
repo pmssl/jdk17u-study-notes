@@ -147,7 +147,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          */
         abstract boolean initialTryLock();
 
-        @ReservedStackAccess
+        @ReservedStackAccess // Allow critical code to use reserved stack space during stack overflow.
         final void lock() {
             if (!initialTryLock())
                 acquire(1);
